@@ -345,6 +345,10 @@ if uploaded_file and df is not None:
     
     if 'analyze_btn' in locals() and analyze_btn:
         
+        # Calcul des variations
+        variations_abs = series.diff()
+        variations_pct = series.pct_change() * 100
+        
         # TAB NAVIGATION
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Exploration", 
@@ -358,7 +362,7 @@ if uploaded_file and df is not None:
         with tab1:
             st.markdown("## 📊 EXPLORATION DES DONNÉES")
             
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 st.metric("📏 Observations", f"{len(series):,}")
             with col2:
@@ -368,24 +372,52 @@ if uploaded_file and df is not None:
             with col4:
                 missing = series.isna().sum()
                 st.metric("❌ Valeurs manquantes", f"{missing:,}")
+            with col5:
+                croissance_totale = ((series.iloc[-1] - series.iloc[0]) / series.iloc[0]) * 100
+                st.metric("📈 Croissance totale", f"{croissance_totale:.2f}%")
             
             st.markdown("---")
             
-            # Aperçu des données
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("### 📋 Aperçu des données")
-                # Formater le dataframe pour l'affichage
-                display_df = ts_data.head(10).copy()
-                display_df[value_col] = display_df[value_col].apply(lambda x: format_number(x))
-                st.dataframe(display_df, use_container_width=True, height=400)
+            # Aperçu des données avec variations
+            st.markdown("### 📋 Aperçu des données avec variations")
             
-            with col2:
-                st.markdown("### 📋 Statistiques rapides")
+            # Créer un dataframe avec variations
+            display_df_full = ts_data.copy()
+            display_df_full['Variation Absolue'] = variations_abs
+            display_df_full['Variation (%)'] = variations_pct
+            
+            # Formater pour l'affichage
+            display_df = display_df_full.head(15).copy()
+            display_df[value_col] = display_df[value_col].apply(lambda x: format_number(x))
+            display_df['Variation Absolue'] = display_df['Variation Absolue'].apply(lambda x: format_number(x) if pd.notna(x) else "N/A")
+            display_df['Variation (%)'] = display_df['Variation (%)'].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "N/A")
+            
+            st.dataframe(display_df, use_container_width=True, height=400)
+            
+            st.markdown("---")
+            
+            # Statistiques des variations
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("### 📊 Statistiques de la série")
                 stats_df = series.describe().to_frame()
                 stats_df.columns = ['Valeur']
                 stats_df['Valeur'] = stats_df['Valeur'].apply(lambda x: format_number(x))
-                st.dataframe(stats_df, use_container_width=True, height=400)
+                st.dataframe(stats_df, use_container_width=True, height=350)
+            
+            with col2:
+                st.markdown("### 📊 Statistiques variations absolues")
+                var_abs_stats = variations_abs.describe().to_frame()
+                var_abs_stats.columns = ['Valeur']
+                var_abs_stats['Valeur'] = var_abs_stats['Valeur'].apply(lambda x: format_number(x))
+                st.dataframe(var_abs_stats, use_container_width=True, height=350)
+            
+            with col3:
+                st.markdown("### 📊 Statistiques variations (%)")
+                var_pct_stats = variations_pct.describe().to_frame()
+                var_pct_stats.columns = ['Valeur']
+                var_pct_stats['Valeur'] = var_pct_stats['Valeur'].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "N/A")
+                st.dataframe(var_pct_stats, use_container_width=True, height=350)
             
             st.markdown("---")
             
@@ -443,10 +475,13 @@ if uploaded_file and df is not None:
             st.pyplot(fig)
             
             # Histogramme et Boxplot
+            st.markdown("---")
+            st.markdown("### 📊 Analyse de la distribution")
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("### 📊 Distribution")
+                st.markdown("#### 📊 Distribution des valeurs")
                 fig, ax = plt.subplots(figsize=(7, 5), facecolor='#0a0e27')
                 ax.set_facecolor('#1a1f3a')
                 ax.hist(series, bins=20, color='#00d9ff', edgecolor='#00ffaa', alpha=0.7)
@@ -461,7 +496,7 @@ if uploaded_file and df is not None:
                 st.pyplot(fig)
             
             with col2:
-                st.markdown("### 📦 Boxplot")
+                st.markdown("#### 📦 Boxplot des valeurs")
                 fig, ax = plt.subplots(figsize=(7, 5), facecolor='#0a0e27')
                 ax.set_facecolor('#1a1f3a')
                 bp = ax.boxplot(series, vert=True, patch_artist=True,
@@ -478,24 +513,104 @@ if uploaded_file and df is not None:
                     spine.set_color('#4dd4ff')
                 plt.tight_layout()
                 st.pyplot(fig)
+            
+            st.markdown("---")
+            
+            # Graphiques des variations
+            st.markdown("### 📈 Analyse des variations")
+            
+            # Graphique des variations absolues
+            st.markdown("#### 📊 Variations absolues entre périodes")
+            fig, ax = plt.subplots(figsize=(14, 5), facecolor='#0a0e27')
+            ax.set_facecolor('#1a1f3a')
+            colors = ['#00ffaa' if x > 0 else '#ff0066' for x in variations_abs.dropna()]
+            ax.bar(variations_abs.dropna().index, variations_abs.dropna().values, 
+                   color=colors, edgecolor='white', linewidth=0.5, alpha=0.8)
+            ax.axhline(0, color='#00d9ff', linestyle='--', linewidth=2)
+            
+            # Formatter l'axe Y
+            ax.yaxis.set_major_formatter(FuncFormatter(format_y_axis))
+            ax.set_title("Variations absolues entre périodes consécutives", 
+                        color='white', fontsize=16, fontweight='bold', pad=20)
+            ax.set_xlabel("Date", color='#a0aec0', fontsize=12)
+            ax.set_ylabel("Variation", color='#a0aec0', fontsize=12)
+            ax.grid(True, alpha=0.3, color='#4dd4ff', axis='y')
+            ax.tick_params(colors='#a0aec0')
+            for spine in ax.spines.values():
+                spine.set_color('#4dd4ff')
+                spine.set_linewidth(2)
+            plt.tight_layout()
+            st.pyplot(fig)
+            
+            # Graphique des variations en pourcentage
+            st.markdown("#### 📊 Taux de croissance (%)")
+            fig, ax = plt.subplots(figsize=(14, 5), facecolor='#0a0e27')
+            ax.set_facecolor('#1a1f3a')
+            colors_pct = ['#00ffaa' if x > 0 else '#ff0066' for x in variations_pct.dropna()]
+            ax.bar(variations_pct.dropna().index, variations_pct.dropna().values,
+                   color=colors_pct, edgecolor='white', linewidth=0.5, alpha=0.8)
+            ax.axhline(0, color='#00d9ff', linestyle='--', linewidth=2)
+            
+            # Ajouter une ligne de moyenne
+            mean_var = variations_pct.dropna().mean()
+            ax.axhline(mean_var, color='#ffa500', linestyle=':', linewidth=2, 
+                      label=f'Taux moyen: {mean_var:.2f}%')
+            
+            ax.set_title("Taux de croissance entre périodes consécutives", 
+                        color='white', fontsize=16, fontweight='bold', pad=20)
+            ax.set_xlabel("Date", color='#a0aec0', fontsize=12)
+            ax.set_ylabel("Variation (%)", color='#a0aec0', fontsize=12)
+            ax.grid(True, alpha=0.3, color='#4dd4ff', axis='y')
+            ax.legend(loc='upper left', facecolor='#1a1f3a', edgecolor='#ffa500', 
+                     labelcolor='white', fontsize=11)
+            ax.tick_params(colors='#a0aec0')
+            for spine in ax.spines.values():
+                spine.set_color('#4dd4ff')
+                spine.set_linewidth(2)
+            plt.tight_layout()
+            st.pyplot(fig)
+            
+            # Métriques des variations
+            st.markdown("---")
+            st.markdown("### 📊 Métriques des variations")
+            
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
+                max_increase = variations_abs.max()
+                st.metric("📈 Plus forte hausse", format_number(max_increase))
+            with col2:
+                max_decrease = variations_abs.min()
+                st.metric("📉 Plus forte baisse", format_number(max_decrease))
+            with col3:
+                avg_variation = variations_abs.mean()
+                st.metric("📊 Variation moyenne", format_number(avg_variation))
+            with col4:
+                max_growth_rate = variations_pct.max()
+                st.metric("🚀 Taux max (%)", f"{max_growth_rate:.2f}%")
+            with col5:
+                avg_growth_rate = variations_pct.mean()
+                st.metric("📊 Taux moyen (%)", f"{avg_growth_rate:.2f}%")
         
         # TAB 2: STATISTIQUES
         with tab2:
             st.markdown("## 📈 INDICES STATISTIQUES")
             
             # Indices de tendance centrale
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("📊 Moyenne", format_number(series.mean()))
             with col2:
                 st.metric("📊 Médiane", format_number(series.median()))
             with col3:
                 st.metric("📊 Écart-type", format_number(series.std()))
+            with col4:
+                coef_var = (series.std() / series.mean()) * 100
+                st.metric("📊 Coef. Variation", f"{coef_var:.2f}%")
             
             st.markdown("---")
             
-            # Indices de forme
-            col1, col2, col3 = st.columns(3)
+            # Indices de forme et variations
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("📊 Variance", format_number(series.var()))
             with col2:
@@ -504,6 +619,62 @@ if uploaded_file and df is not None:
             with col3:
                 skewness_val = skew(series, bias=False)
                 st.metric("📊 Skewness", f"{skewness_val:.4f}")
+            with col4:
+                volatility = variations_pct.std()
+                st.metric("📊 Volatilité (%)", f"{volatility:.2f}%")
+            
+            st.markdown("---")
+            
+            # Analyse des tendances de croissance
+            st.markdown("### 📈 Analyse des tendances de croissance")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Statistiques des variations en %
+                st.markdown("#### 📊 Statistiques des taux de croissance")
+                growth_stats = pd.DataFrame({
+                    'Métrique': ['Taux de croissance moyen',
+                        'Taux de croissance médian',
+                        'Écart-type des taux',
+                        'Taux maximum',
+                        'Taux minimum',
+                        'Nombre de hausses',
+                        'Nombre de baisses'
+                    ],
+                    'Valeur': [
+                        f"{variations_pct.mean():.2f}%",
+                        f"{variations_pct.median():.2f}%",
+                        f"{variations_pct.std():.2f}%",
+                        f"{variations_pct.max():.2f}%",
+                        f"{variations_pct.min():.2f}%",
+                        f"{(variations_pct > 0).sum()}",
+                        f"{(variations_pct < 0).sum()}"
+                    ]
+                })
+                st.dataframe(growth_stats, use_container_width=True, hide_index=True, height=280)
+            
+            with col2:
+                # Distribution des taux de croissance
+                st.markdown("#### 📊 Distribution des taux de croissance")
+                fig, ax = plt.subplots(figsize=(7, 5), facecolor='#0a0e27')
+                ax.set_facecolor('#1a1f3a')
+                ax.hist(variations_pct.dropna(), bins=15, color='#00d9ff', 
+                       edgecolor='#00ffaa', alpha=0.7)
+                mean_rate = variations_pct.mean()
+                ax.axvline(mean_rate, color='#ff0066', linestyle='--', linewidth=2,
+                          label=f'Moyenne: {mean_rate:.2f}%')
+                ax.set_title("Distribution des taux de croissance", 
+                           color='white', fontsize=14, fontweight='bold')
+                ax.set_xlabel("Taux de croissance (%)", color='#a0aec0')
+                ax.set_ylabel("Fréquence", color='#a0aec0')
+                ax.legend(facecolor='#1a1f3a', edgecolor='#ff0066', labelcolor='white')
+                ax.grid(True, alpha=0.3, color='#4dd4ff')
+                ax.tick_params(colors='#a0aec0')
+                for spine in ax.spines.values():
+                    spine.set_color('#4dd4ff')
+                plt.tight_layout()
+                st.pyplot(fig)
             
             st.markdown("---")
             
@@ -867,16 +1038,6 @@ if uploaded_file and df is not None:
                            arrowprops=dict(arrowstyle='->', color='#00d9ff', lw=1.5))
                 
                 # Formatter l'axe Y
-                def format_y_axis(value, pos):
-                    if abs(value) >= 1e12:
-                        return f'{value/1e12:.1f}T'
-                    elif abs(value) >= 1e9:
-                        return f'{value/1e9:.1f}B'
-                    elif abs(value) >= 1e6:
-                        return f'{value/1e6:.1f}M'
-                    else:
-                        return f'{value:,.0f}'
-                
                 ax.yaxis.set_major_formatter(FuncFormatter(format_y_axis))
                 
                 ax.set_title("Prévisions avec Intervalle de Confiance 95%", 
