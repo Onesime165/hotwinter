@@ -252,6 +252,48 @@ st.markdown("""
         border: 1px solid rgba(0, 217, 255, 0.3);
         border-radius: 10px;
     }
+    
+    /* Style pour les informations de l'auteur */
+    .author-info {
+        background: rgba(26, 31, 58, 0.8);
+        border: 1px solid rgba(0, 217, 255, 0.3);
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+        box-shadow: 0 0 15px rgba(0, 217, 255, 0.2);
+        animation: slideIn 0.8s ease-out;
+    }
+    
+    .author-info h4 {
+        color: #00ffaa !important;
+        text-shadow: 0 0 10px rgba(0, 255, 170, 0.4);
+        margin-bottom: 15px;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(0, 217, 255, 0.3);
+        padding-bottom: 8px;
+    }
+    
+    .author-info p {
+        color: #a0aec0 !important;
+        margin-bottom: 8px;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+    
+    .author-info b {
+        color: #00d9ff !important;
+    }
+    
+    .author-info a {
+        color: #00ff88 !important;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .author-info a:hover {
+        color: #00d9ff !important;
+        text-shadow: 0 0 10px rgba(0, 217, 255, 0.6);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -331,6 +373,21 @@ with st.sidebar:
             
             st.markdown("---")
             analyze_btn = st.button("🚀 LANCER L'ANALYSE", use_container_width=True)
+
+    # Section À propos de l'auteur
+    st.markdown("---")
+    st.markdown("""
+    <div class="author-info">
+        <h4>🧾 À propos de l'auteur</h4>
+        <p><b>Nom:</b> N'dri</p>
+        <p><b>Prénom:</b> Abo Onesime</p>
+        <p><b>Rôle:</b> Data Analyst / Scientist</p>
+        <p><b>Téléphone:</b> 07-68-05-98-87 / 01-01-75-11-81</p>
+        <p><b>Email:</b> <a href="mailto:ndriablatie123@gmail.com" style="color:#00ff88;">ndriablatie123@gmail.com</a></p>
+        <p><b>LinkedIn:</b> <a href="https://www.linkedin.com/in/abo-onesime-n-dri-54a537200/" target="_blank" style="color:#00ff88;">Profil LinkedIn</a></p>
+        <p><b>GitHub:</b> <a href="https://github.com/Aboonesime" target="_blank" style="color:#00ff88;">Mon GitHub</a></p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Corps principal
 if uploaded_file and df is not None:
